@@ -1,0 +1,10 @@
+# Dev secrets — never commit
+.env
+
+# Swift / build artifacts
+.build/
+*.app
+DerivedData/
+
+# macOS
+.DS_Store
