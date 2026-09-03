@@ -1,4 +1,4 @@
-.PHONY: build bundle run selftest clean
+.PHONY: build bundle run selftest release install clean
 
 # Compile only.
 build:
@@ -7,6 +7,16 @@ build:
 # Build the BusBar.app bundle (release).
 bundle:
 	./Scripts/bundle.sh release
+
+# Build a universal, signed BusBar.app + distributable zip.
+release:
+	./Scripts/release.sh
+
+# Install the built app into /Applications (builds first if needed).
+install: bundle
+	@rm -rf /Applications/BusBar.app
+	cp -R BusBar.app /Applications/BusBar.app
+	@echo "Installed to /Applications/BusBar.app — launch it from Spotlight or Finder."
 
 # Build + launch the menu bar app for development.
 # Runs the binary inside the bundle directly so it inherits the shell env and finds .env,

@@ -35,12 +35,56 @@ On first launch, click the menu bar item → **Settings…**:
 2. **Stops** tab — **Find stops near me** (grant location access), or paste a stop **Onestop ID**
    (e.g. `s-dr4vw0dtyh-forrestalsb`). Use **Routes…** to hide specific lines per stop.
 
+### Install to /Applications
+
+```bash
+make install   # builds BusBar.app and copies it to /Applications
+```
+
+Then launch it from Spotlight/Finder. Enable **Settings → General → Launch at login** to have
+it start automatically. (Launch-at-login registers whatever copy is running, so install to
+/Applications first, then toggle it on.)
+
 ### Development
 
 ```bash
 make run       # build the bundle and launch it (loads .env automatically)
 make selftest  # headless check: prints live arrivals for two Princeton stops
 ```
+
+## Distributing via GitHub Releases
+
+```bash
+make release   # -> BusBar.app (universal arm64+x86_64, signed) + BusBar-<version>-macos.zip
+gh release create v0.1 BusBar-0.1-macos.zip --title "BusBar 0.1" --notes "First release"
+```
+
+`make release` builds a **universal** binary (Apple Silicon + Intel), ad-hoc signs it, and zips
+it with `ditto` (preserving the signature) as the release asset.
+
+**Gatekeeper caveat.** An ad-hoc-signed app isn't notarized by Apple, so anyone who *downloads*
+the zip must clear the quarantine flag before first launch:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/BusBar.app
+```
+
+(or right-click the app → **Open** → **Open**, then use *Open Anyway* in System Settings →
+Privacy & Security). Document this in your release notes. This only affects downloaded copies —
+the app you build locally runs without it.
+
+**Notarized (no Gatekeeper prompt).** Needs a paid Apple Developer account. With a Developer ID:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" make release
+xcrun notarytool submit BusBar-0.1-macos.zip \
+  --apple-id you@example.com --team-id TEAMID --password <app-specific-pw> --wait
+# after it succeeds, staple the ticket into the app and re-zip:
+xcrun stapler staple BusBar.app
+ditto -c -k --sequesterRsrc --keepParent BusBar.app BusBar-0.1-macos.zip
+```
+
+Stapled builds run with no quarantine prompt on any Mac.
 
 `.env` (git-ignored) may contain `TRANSITLAND_API_KEY=…` for development only. The app always
 prefers a key entered in Settings; the `.env` key is just a fallback so you don't have to type

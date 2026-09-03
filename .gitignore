@@ -4,6 +4,7 @@
 # Swift / build artifacts
 .build/
 *.app
+BusBar-*.zip
 DerivedData/
 
 # macOS
