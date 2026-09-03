@@ -7,6 +7,7 @@ final class AppEnvironment {
     let config: AppConfig
     let location: LocationManager
     let store: ArrivalStore
+    let loginItem: LoginItem
 
     private init() {
         let config = AppConfig()
@@ -14,6 +15,7 @@ final class AppEnvironment {
         self.config = config
         self.location = location
         self.store = ArrivalStore(config: config, location: location)
+        self.loginItem = LoginItem()
     }
 }
 
@@ -45,6 +47,7 @@ struct BusBarApp: App {
                 .environmentObject(env.store)
                 .environmentObject(env.config)
                 .environmentObject(env.location)
+                .environmentObject(env.loginItem)
         }
         .windowResizability(.contentSize)
     }

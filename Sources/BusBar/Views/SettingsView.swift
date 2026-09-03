@@ -6,6 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject var config: AppConfig
     @EnvironmentObject var store: ArrivalStore
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var loginItem: LoginItem
 
     @State private var editingStop: ConfiguredStop?
 
@@ -13,6 +14,7 @@ struct SettingsView: View {
         TabView {
             stopsTab.tabItem { Label("Stops", systemImage: "bus") }
             apiKeyTab.tabItem { Label("API Key", systemImage: "key") }
+            generalTab.tabItem { Label("General", systemImage: "gearshape") }
         }
         .frame(width: 460, height: 460)
         .sheet(item: $editingStop) { stop in
@@ -79,6 +81,27 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(16)
+    }
+
+    // MARK: General
+
+    private var generalTab: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("General").font(.headline)
+            Toggle("Launch BusBar at login", isOn: Binding(
+                get: { loginItem.isEnabled },
+                set: { loginItem.setEnabled($0) }
+            ))
+            Text("Registers this copy of BusBar.app. If you move the app, toggle this off and on again.")
+                .font(.caption).foregroundStyle(.secondary)
+            if let err = loginItem.lastError {
+                Label(err, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .onAppear { loginItem.refresh() }
     }
 }
 

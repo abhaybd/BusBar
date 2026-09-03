@@ -14,6 +14,7 @@ The menu bar shows `route · minutes · stop`, e.g. `606 · 17m · Nassau`.
 - **Live** predictions where the agency publishes GTFS-Realtime (e.g. NJ Transit); a `sched`
   badge marks schedule-only feeds (e.g. TigerTransit, whose realtime lives in TripShot).
 - Menu-bar-only (no Dock icon), refreshes every ~45s.
+- Optional **launch at login** (Settings → General).
 
 ## Requirements
 
