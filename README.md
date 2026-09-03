@@ -18,34 +18,57 @@ The menu bar shows `route · minutes · stop`, e.g. `606 · 17m · Nassau`.
 
 ## Requirements
 
-- macOS 13+
-- A Swift toolchain (Xcode or Command Line Tools)
-- A free **Transitland API key** — sign up at [transit.land](https://www.transit.land)
+- macOS 13+ (Ventura or later)
+- A free **Transitland API key** (see below)
 
-## Build & run
+## Get a Transitland API key
 
-```bash
-make bundle        # builds BusBar.app
-open BusBar.app    # launch it (look for the text in your menu bar)
-```
+BusBar uses [Transitland](https://www.transit.land) for transit data, which needs a free key:
 
-On first launch, click the menu bar item → **Settings…**:
+1. Create a free account at [transit.land sign-up](https://www.transit.land/documentation#sign-up).
+2. Once signed in, copy your **API key** from your account page.
+3. Paste it into BusBar under **Settings → API Key** on first launch.
 
-1. **API Key** tab — paste your Transitland key.
-2. **Stops** tab — **Find stops near me** (grant location access), or paste a stop **Onestop ID**
-   (e.g. `s-dr4vw0dtyh-forrestalsb`). Use **Routes…** to hide specific lines per stop.
+The free tier is plenty for personal use — BusBar only polls your saved stops every ~45s.
 
-### Install to /Applications
+## Install
+
+### Option A — download a release (recommended)
+
+1. Download `BusBar-<version>-macos.zip` from the
+   [**Releases** page](https://github.com/abhaybd/BusBar/releases/latest).
+2. Unzip it and drag **BusBar.app** into `/Applications`.
+3. The app isn't notarized by Apple, so clear the quarantine flag once (otherwise macOS refuses
+   to open it):
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/BusBar.app
+   ```
+   (Alternatively: right-click **BusBar.app → Open → Open**, or allow it under
+   **System Settings → Privacy & Security → Open Anyway**.)
+4. Launch BusBar from Spotlight/Finder — look for the bus icon in your menu bar.
+
+### Option B — build from source
+
+Requires a Swift toolchain (Xcode or the Command Line Tools: `xcode-select --install`).
 
 ```bash
 make install   # builds BusBar.app and copies it to /Applications
 ```
 
-Then launch it from Spotlight/Finder. Enable **Settings → General → Launch at login** to have
-it start automatically. (Launch-at-login registers whatever copy is running, so install to
-/Applications first, then toggle it on.)
+Or `make run` to build and launch it in place without installing.
 
-### Development
+## First launch
+
+Click the menu bar item → **Settings…**:
+
+1. **API Key** tab — paste your Transitland key.
+2. **Stops** tab — **Find stops near me** (grant location access), or paste a stop **Onestop ID**
+   (e.g. `s-dr4vw0dtyh-forrestalsb`). Use **Routes…** to hide specific lines per stop.
+
+Enable **Settings → General → Launch at login** to start BusBar automatically. (This registers
+whichever copy is running, so install to /Applications first, then toggle it on.)
+
+## Development
 
 ```bash
 make run       # build the bundle and launch it (loads .env automatically)
