@@ -11,6 +11,8 @@ final class AppEnvironment {
     let store: ArrivalStore
     let loginItem: LoginItem
 
+    private var settingsWindow: NSWindow?
+
     private init() {
         let config = AppConfig()
         let location = LocationManager()
@@ -19,6 +21,30 @@ final class AppEnvironment {
         self.store = ArrivalStore(config: config, location: location)
         self.loginItem = LoginItem()
     }
+
+    /// Show (creating once, then reusing) the settings window. Owned here rather than via
+    /// NSApp.delegate, because SwiftUI's delegate adaptor wraps our AppDelegate.
+    func showSettings() {
+        if settingsWindow == nil {
+            let host = NSHostingController(rootView:
+                SettingsView()
+                    .environmentObject(store)
+                    .environmentObject(config)
+                    .environmentObject(location)
+                    .environmentObject(loginItem)
+            )
+            host.sizingOptions = .preferredContentSize
+            let window = NSWindow(contentViewController: host)
+            window.title = "BusBar Settings"
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 460, height: 460))
+            window.center()
+            settingsWindow = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
+    }
 }
 
 struct BusBarApp: App {
@@ -26,27 +52,17 @@ struct BusBarApp: App {
     private let env = AppEnvironment.shared
 
     var body: some Scene {
-        // The only SwiftUI scene: the Settings/Preferences window. The menu bar item itself is
-        // an AppKit NSStatusItem managed by AppDelegate, so we get pixel control over the label.
-        Settings {
-            SettingsView()
-                .environmentObject(env.store)
-                .environmentObject(env.config)
-                .environmentObject(env.location)
-                .environmentObject(env.loginItem)
-        }
+        // The menu bar item and the settings window are both managed by AppDelegate (AppKit),
+        // which is reliable for an accessory/LSUIElement app. This placeholder scene just
+        // satisfies SwiftUI's requirement that an App have at least one Scene; it never shows.
+        Settings { EmptyView() }
     }
 }
 
-/// Opens the SwiftUI Settings window from AppKit contexts (dropdown button, etc.).
+/// Opens the settings window from AppKit contexts (dropdown button, etc.).
 @MainActor
 func openBusBarSettings() {
-    NSApp.activate(ignoringOtherApps: true)
-    if #available(macOS 14, *) {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-    } else {
-        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-    }
+    AppEnvironment.shared.showSettings()
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
