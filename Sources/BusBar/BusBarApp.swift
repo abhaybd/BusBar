@@ -51,7 +51,13 @@ struct BusBarApp: App {
 }
 
 /// Small observing wrapper so the menu bar title re-renders whenever the store updates.
+/// A monochrome bus glyph (template SF Symbol, tints with the menu bar) sits left of the text.
 private struct MenuLabel: View {
     @ObservedObject var store: ArrivalStore
-    var body: some View { Text(store.menuLabel) }
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "bus.fill")
+            Text(store.menuText)
+        }
+    }
 }

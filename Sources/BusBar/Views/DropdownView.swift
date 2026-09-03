@@ -108,6 +108,9 @@ private struct ArrivalRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            Image(systemName: "bus.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Text(arrival.routeShortName)
                 .font(.system(.body, design: .rounded).weight(.semibold))
                 .frame(minWidth: 34, alignment: .leading)

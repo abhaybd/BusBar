@@ -174,13 +174,14 @@ final class ArrivalStore: ObservableObject {
         return config.stops.first { $0.onestopID == id } ?? config.stops.first
     }
 
-    /// The compact string shown in the menu bar, e.g. "3 · 4m · Forrestal".
-    var menuLabel: String {
-        guard !config.stops.isEmpty else { return "🚌 Set up" }
-        guard let stop = activeStop else { return "🚌 —" }
+    /// The compact text shown in the menu bar, e.g. "3 · 4m · Forrestal".
+    /// A bus glyph is drawn alongside this by the label view (see `MenuLabel`).
+    var menuText: String {
+        guard !config.stops.isEmpty else { return "Set up" }
+        guard let stop = activeStop else { return "—" }
         let arrivals = filteredArrivals(for: stop.onestopID)
         guard let next = arrivals.first else {
-            return "🚌 \(stop.displayName): none"
+            return "\(stop.displayName): none"
         }
         let mins = next.minutesUntil()
         let when = mins <= 0 ? "now" : "\(mins)m"
