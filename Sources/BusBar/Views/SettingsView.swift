@@ -16,7 +16,7 @@ struct SettingsView: View {
             apiKeyTab.tabItem { Label("API Key", systemImage: "key") }
             generalTab.tabItem { Label("General", systemImage: "gearshape") }
         }
-        .frame(width: 460, height: 460)
+        .frame(width: 480, height: 560)
         .sheet(item: $editingStop) { stop in
             StopEditorView(stop: stop)
                 .environmentObject(config)

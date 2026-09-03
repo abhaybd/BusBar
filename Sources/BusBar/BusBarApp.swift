@@ -33,12 +33,13 @@ final class AppEnvironment {
                     .environmentObject(location)
                     .environmentObject(loginItem)
             )
-            host.sizingOptions = .preferredContentSize
+            // Fixed size: do NOT use .preferredContentSize here, or the window resizes as tab
+            // content grows (e.g. nearby-stop results) and shoves the tab strip under the title bar.
             let window = NSWindow(contentViewController: host)
             window.title = "BusBar Settings"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
-            window.setContentSize(NSSize(width: 460, height: 460))
+            window.setContentSize(NSSize(width: 480, height: 560))
             window.center()
             settingsWindow = window
         }
