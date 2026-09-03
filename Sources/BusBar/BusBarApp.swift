@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import Combine
 
 /// Owns the long-lived model objects so both the SwiftUI scenes and the AppDelegate share them.
 @MainActor
@@ -19,48 +21,126 @@ final class AppEnvironment {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Menu-bar-only: no Dock icon, no app switcher entry — even when launched directly.
-        NSApp.setActivationPolicy(.accessory)
-        AppEnvironment.shared.store.start()
-    }
-}
-
 struct BusBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     private let env = AppEnvironment.shared
 
     var body: some Scene {
-        MenuBarExtra {
-            DropdownView()
-                .environmentObject(env.store)
-                .environmentObject(env.config)
-                .environmentObject(env.location)
-        } label: {
-            MenuLabel(store: env.store)
-        }
-        .menuBarExtraStyle(.window)
-
-        Window("BusBar Settings", id: "settings") {
+        // The only SwiftUI scene: the Settings/Preferences window. The menu bar item itself is
+        // an AppKit NSStatusItem managed by AppDelegate, so we get pixel control over the label.
+        Settings {
             SettingsView()
                 .environmentObject(env.store)
                 .environmentObject(env.config)
                 .environmentObject(env.location)
                 .environmentObject(env.loginItem)
         }
-        .windowResizability(.contentSize)
     }
 }
 
-/// Small observing wrapper so the menu bar title re-renders whenever the store updates.
-/// A monochrome bus glyph (template SF Symbol, tints with the menu bar) sits left of the text.
-private struct MenuLabel: View {
-    @ObservedObject var store: ArrivalStore
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "bus.fill")
-            Text(store.menuText)
+/// Opens the SwiftUI Settings window from AppKit contexts (dropdown button, etc.).
+@MainActor
+func openBusBarSettings() {
+    NSApp.activate(ignoringOtherApps: true)
+    if #available(macOS 14, *) {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    } else {
+        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var statusItem: NSStatusItem!
+    private let popover = NSPopover()
+    private var cancellables: Set<AnyCancellable> = []
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Menu-bar-only: no Dock icon, no app switcher entry — even when launched directly.
+        NSApp.setActivationPolicy(.accessory)
+
+        let env = AppEnvironment.shared
+        env.store.start()
+
+        // Status item.
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem.button {
+            button.action = #selector(togglePopover(_:))
+            button.target = self
         }
+
+        // Popover hosting the SwiftUI dropdown.
+        popover.behavior = .transient
+        let host = NSHostingController(rootView:
+            DropdownView()
+                .environmentObject(env.store)
+                .environmentObject(env.config)
+                .environmentObject(env.location)
+                .environmentObject(env.loginItem)
+        )
+        host.sizingOptions = .preferredContentSize
+        popover.contentViewController = host
+
+        // Keep the button title in sync with the store.
+        env.store.$menuText
+            .receive(on: RunLoop.main)
+            .sink { [weak self] text in self?.updateTitle(text) }
+            .store(in: &cancellables)
+        updateTitle(env.store.menuText)
+    }
+
+    private func updateTitle(_ text: String) {
+        guard let button = statusItem.button else { return }
+        button.attributedTitle = MenuBarTitle.make(text: text)
+    }
+
+    @objc private func togglePopover(_ sender: Any?) {
+        guard let button = statusItem.button else { return }
+        if popover.isShown {
+            popover.performClose(sender)
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+}
+
+/// Builds the menu bar button's attributed title: a monochrome bus glyph, a tunable gap, then
+/// the text. Unlike a SwiftUI MenuBarExtra label, these values actually take effect.
+enum MenuBarTitle {
+    /// SF Symbol point size for the bus glyph.
+    static let symbolPointSize: CGFloat = 13
+    /// Extra horizontal space (points) between the bus and the text, on top of a normal space.
+    static let gap: CGFloat = 3
+    /// Vertical nudge for the glyph (points). Positive = up, negative = down.
+    static let verticalOffset: CGFloat = 0
+
+    static func make(text: String) -> NSAttributedString {
+        let font = NSFont.menuBarFont(ofSize: 0)
+        let result = NSMutableAttributedString()
+
+        if let glyph = busGlyph() {
+            let attachment = NSTextAttachment()
+            attachment.image = glyph
+            let h = glyph.size.height
+            let w = glyph.size.width
+            // Center the glyph on the text cap height, then apply the manual nudge.
+            let y = (font.capHeight - h) / 2 + verticalOffset
+            attachment.bounds = CGRect(x: 0, y: y, width: w, height: h)
+            result.append(NSAttributedString(attachment: attachment))
+            // A space carrying extra kern gives a tunable gap before the text.
+            result.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: gap]))
+        }
+
+        result.append(NSAttributedString(string: text, attributes: [.font: font]))
+        return result
+    }
+
+    private static func busGlyph() -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
+        guard let img = NSImage(systemSymbolName: "bus.fill", accessibilityDescription: "bus")?
+            .withSymbolConfiguration(config) else { return nil }
+        img.isTemplate = true // tint with the menu bar (monochrome)
+        return img
     }
 }

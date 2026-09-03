@@ -5,7 +5,6 @@ import SwiftUI
 struct DropdownView: View {
     @EnvironmentObject var store: ArrivalStore
     @EnvironmentObject var config: AppConfig
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -94,10 +93,7 @@ struct DropdownView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Settings…") {
-                NSApp.activate(ignoringOtherApps: true)
-                openWindow(id: "settings")
-            }
+            Button("Settings…") { openBusBarSettings() }
             Button("Quit") { NSApp.terminate(nil) }
         }
     }

@@ -14,6 +14,9 @@ final class ArrivalStore: ObservableObject {
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var lastError: String?
     @Published private(set) var isRefreshing = false
+    /// The compact text shown in the menu bar, e.g. "3 · 4m · Forrestal". Published so the
+    /// status item can observe it and re-render the button title.
+    @Published private(set) var menuText: String = "Set up"
 
     /// When the user picks a stop from the dropdown, honor it instead of the location-based pick.
     private var manualStopID: String?
@@ -22,6 +25,7 @@ final class ArrivalStore: ObservableObject {
     let location: LocationManager
 
     private var pollTask: Task<Void, Never>?
+    private var displayTask: Task<Void, Never>?
     private var cancellables: Set<AnyCancellable> = []
     private let pollInterval: TimeInterval = 45
     private let window = 3 * 3600 // fetch 3h of departures
@@ -47,12 +51,21 @@ final class ArrivalStore: ObservableObject {
 
     func start() {
         location.requestIfNeeded()
+        updateMenuText()
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
                 await self.refresh()
                 try? await Task.sleep(nanoseconds: UInt64(self.pollInterval * 1_000_000_000))
+            }
+        }
+        // Tick the displayed countdown between network polls.
+        displayTask?.cancel()
+        displayTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 20 * 1_000_000_000)
+                self?.updateMenuText()
             }
         }
     }
@@ -69,6 +82,7 @@ final class ArrivalStore: ObservableObject {
             routesByStop = [:]
             activeStopID = nil
             lastError = nil
+            updateMenuText()
             return
         }
         guard !key.isEmpty else {
@@ -136,10 +150,12 @@ final class ArrivalStore: ObservableObject {
     func setActiveStop(_ id: String) {
         manualStopID = id
         activeStopID = id
+        updateMenuText()
     }
 
     /// Closest configured stop that has an upcoming (non-disabled) bus; falls back sensibly.
     func recomputeActiveStop() {
+        defer { updateMenuText() }
         let stops = config.stops
         guard !stops.isEmpty else { activeStopID = nil; manualStopID = nil; return }
 
@@ -174,9 +190,13 @@ final class ArrivalStore: ObservableObject {
         return config.stops.first { $0.onestopID == id } ?? config.stops.first
     }
 
-    /// The compact text shown in the menu bar, e.g. "3 · 4m · Forrestal".
-    /// A bus glyph is drawn alongside this by the label view (see `MenuLabel`).
-    var menuText: String {
+    /// Recompute and publish `menuText`. Cheap; safe to call from a display timer.
+    func updateMenuText() {
+        let next = computeMenuText()
+        if next != menuText { menuText = next }
+    }
+
+    private func computeMenuText() -> String {
         guard !config.stops.isEmpty else { return "Set up" }
         guard let stop = activeStop else { return "—" }
         let arrivals = filteredArrivals(for: stop.onestopID)
